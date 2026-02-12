@@ -1,43 +1,44 @@
 import ffmpeg
 from wand.image import Image
+from tqdm import tqdm
 import shutil
 import os
 import re
 
-file_regex = re.compile(r'.*\.(png|jpg|jpeg|mp4|mpeg|wmv|mov|mkv|avi|webm|webp|gif)$')
+file_regex = re.compile(r'^.*\.(png|jpg|jpeg|mp4|mpeg|wmv|mov|mkv|avi|webm|webp|gif)$')
 
 input_folder = os.path.expanduser(r"~\Downloads\converting folder")
 output_folder = os.path.expanduser(r"~\Downloads\converting folder\gifs_output")
 temp_folder = os.path.expanduser(r"~\Downloads\converting folder\temp_stufff")
 
-for file in os.listdir(input_folder):
-    print(f"Attempting to convert {file}")
-    re.findall
+files = os.listdir(input_folder)
+
+file_count = len(files)
+
+for file_index,file in enumerate(files):
+    print(f"Attempting to convert {file}, {file_index+1}/{file_count}")
     ext_match = re.match(file_regex,file)
     if ext_match == None:
         print(file, "doesn't have a valid extension!")
         continue
     input_file = os.path.join(input_folder, file)
-    #print(input_file)
     ext_name = ext_match.group(1)
     if ext_name in {"png","jpg","jpeg"}:
         filetype = "image"
     elif ext_name in {"mp4","mpeg","wmv","mov","mkv","avi","webm"}:
         filetype = "video"
-    elif ext_name == "webp":
-        filetype = "webp"
-    elif ext_name == "gif":
-        filetype = "gif"
+    elif ext_name in {"webp","gif"}:
+        filetype = "animated"
     else:
         print("some fuckery is going on")
         continue
 
-    if filetype == "webp":
+    if filetype == "animated":
         with Image(filename=input_file) as img: # have to use iamgemagik cause ffmpeg is obsessed and doesnt want to add anim webp https://trac.ffmpeg.org/ticket/4907 
             frame_count = len(img.sequence)
             
             if frame_count > 1:
-                print(f"Detected webp as video with {frame_count} frames")
+                print(f"Detected webp or gif as video with {frame_count} frames")
 
                 img.coalesce() # make the gif have the full image data
                 
@@ -46,11 +47,14 @@ for file in os.listdir(input_folder):
                 
                 os.makedirs(temp_folder)
 
-                img.save(filename=os.path.join(temp_folder, "frame-%03d.png")) # save all the images to a temp folder
+                print(f"Extracting {frame_count} frames:")
+                for frame_index in tqdm(range(frame_count), desc="ImageMagick", unit="frame"):
+                    with Image(image=img.sequence[frame_index]) as frame:
+                        img.save(filename=os.path.join(temp_folder, "frame-%03d.png")) # save all the images to a temp folder
                 
                 input_file = os.path.join(temp_folder, "frame-%03d.png") # set the input for ffmpeg
             else:
-                print("Webp is just a image")
+                print("Webp or gif is just an image")
                 filetype = "image"
 
     if filetype == "image":
@@ -59,7 +63,7 @@ for file in os.listdir(input_folder):
     elif filetype == "video":
         stream = ffmpeg.input(input_file) # for videos
         stream = stream.filter('fps', fps=15)
-    elif filetype == "webp": # this is specificaly webp animated. static webps are under images
+    elif filetype == "animated": # this is specificaly webp or gif animated. static webps or gifs are under images
         stream = ffmpeg.input(input_file, framerate='15')
 
     stream = stream.filter('format', 'rgba') # so the background has transparency
@@ -67,12 +71,14 @@ for file in os.listdir(input_folder):
     
     split = stream.split() # split stream
     
-    palette = split[0].filter('palettegen') # specifing that we are creating a palette
+    palette = split[0].filter('palettegen', reserve_transparent=1) # specifing that we are creating a palette
     
     out = ffmpeg.filter([split[1], palette], 'paletteuse') # use palette to create image
     
     out = out.output(os.path.join(output_folder, file+".gif")) # output folder
     
+    out = out.global_args('-hide_banner') # remove that big text at the top
+
     out.run(overwrite_output=True) # run it
 
 # just to make sure were clean at the end
