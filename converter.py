@@ -50,7 +50,7 @@ for file_index,file in enumerate(files):
                 print(f"Extracting {frame_count} frames:")
                 for frame_index in tqdm(range(frame_count), desc="ImageMagick", unit="frame"):
                     with Image(image=img.sequence[frame_index]) as frame:
-                        frame.save(filename=os.path.join(temp_folder, "frame-%03d.png")) # saves each frame to a temp folder
+                        frame.save(filename=os.path.join(temp_folder, f"frame-{frame_index:03d}.png")) # saves each frame to a temp folder
                 
                 input_file = os.path.join(temp_folder, "frame-%03d.png") # set the input for ffmpeg
             else:
@@ -67,7 +67,7 @@ for file_index,file in enumerate(files):
         stream = ffmpeg.input(input_file, framerate='15')
 
     stream = stream.filter('format', 'rgba') # so the background has transparency
-    stream = stream.filter('scale', 720, -2, flags='lanczos') # a bit big but wtvr
+    stream = stream.filter('scale', 'min(720,iw)', -2, flags='neighbor') # scale down to 720 if its above and keep the pixalated look with neighbor
     
     split = stream.split() # split stream
     
