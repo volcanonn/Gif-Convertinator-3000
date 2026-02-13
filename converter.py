@@ -50,7 +50,7 @@ for file_index,file in enumerate(files):
                 print(f"Extracting {frame_count} frames:")
                 for frame_index in tqdm(range(frame_count), desc="ImageMagick", unit="frame"):
                     with Image(image=img.sequence[frame_index]) as frame:
-                        img.save(filename=os.path.join(temp_folder, "frame-%03d.png")) # save all the images to a temp folder
+                        frame.save(filename=os.path.join(temp_folder, "frame-%03d.png")) # saves each frame to a temp folder
                 
                 input_file = os.path.join(temp_folder, "frame-%03d.png") # set the input for ffmpeg
             else:
