@@ -40,6 +40,12 @@ for file_index,file in enumerate(files):
             if frame_count > 1:
                 print(f"Detected webp or gif as video with {frame_count} frames")
 
+                delay = img.sequence[0].delay
+                if delay > 0:
+                    calculated_fps = 100.0 / delay
+                else:
+                    calculated_fps = 15.0
+
                 img.coalesce() # make the gif have the full image data
                 
                 if os.path.exists(temp_folder):
@@ -62,18 +68,17 @@ for file_index,file in enumerate(files):
         stream = stream.filter('fps', fps=15)
     elif filetype == "video":
         stream = ffmpeg.input(input_file) # for videos
-        stream = stream.filter('fps', fps=15)
     elif filetype == "animated": # this is specificaly webp or gif animated. static webps or gifs are under images
-        stream = ffmpeg.input(input_file, framerate='15')
+        stream = ffmpeg.input(input_file, framerate=calculated_fps)
 
     stream = stream.filter('format', 'rgba') # so the background has transparency
     stream = stream.filter('scale', 'min(720,iw)', -2, flags='neighbor') # scale down to 720 if its above and keep the pixalated look with neighbor
     
     split = stream.split() # split stream
     
-    palette = split[0].filter('palettegen', reserve_transparent=1) # specifing that we are creating a palette
+    palette = split[0].filter('palettegen', reserve_transparent=1, stats_mode='diff') # specifing that we are creating a palette
     
-    out = ffmpeg.filter([split[1], palette], 'paletteuse') # use palette to create image
+    out = ffmpeg.filter([split[1], palette], 'paletteuse', dither='none') # use palette to create image and no dither
     
     out = out.output(os.path.join(output_folder, file+".gif")) # output folder
     
