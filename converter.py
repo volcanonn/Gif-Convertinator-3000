@@ -7,9 +7,9 @@ import re
 
 file_regex = re.compile(r'^.*\.(png|jpg|jpeg|mp4|mpeg|wmv|mov|mkv|avi|webm|webp|gif)$')
 
-input_folder = os.path.expanduser(r"~\Downloads\converting folder")
-output_folder = os.path.expanduser(r"~\Downloads\converting folder\gifs_output")
-temp_folder = os.path.expanduser(r"~\Downloads\converting folder\temp_stufff")
+input_folder = os.getcwd()
+output_folder = os.path.join(input_folder, "output")
+temp_folder = os.path.join(input_folder, "temp")
 
 files = os.listdir(input_folder)
 
